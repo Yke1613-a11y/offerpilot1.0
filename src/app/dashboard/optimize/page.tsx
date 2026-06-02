@@ -32,6 +32,7 @@ interface Internship {
   startDate: string;
   endDate: string;
   description: string;
+  artifactIds?: string[];
 }
 
 interface WorkArtifact {
@@ -54,6 +55,7 @@ export default function OptimizePage() {
   const [jdHistory, setJdHistory] = useState<JDHistory[]>([]);
   const [selectedJdId, setSelectedJdId] = useState<string | null>(null);
   const [newJdContent, setNewJdContent] = useState("");
+  const [newJdConfirmed, setNewJdConfirmed] = useState(false);
   const [showNewJdInput, setShowNewJdInput] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [optimizedContent, setOptimizedContent] = useState<string | null>(null);
@@ -62,6 +64,8 @@ export default function OptimizePage() {
   
   const [internships, setInternships] = useState<Internship[]>([]);
   const [showInternshipForm, setShowInternshipForm] = useState(false);
+  const [polishingInternship, setPolishingInternship] = useState(false);
+  const [internshipPolished, setInternshipPolished] = useState(false);
   const [newInternship, setNewInternship] = useState<Partial<Internship>>({
     company: "",
     position: "",
@@ -71,7 +75,9 @@ export default function OptimizePage() {
   });
 
   const [artifacts, setArtifacts] = useState<WorkArtifact[]>([]);
-  const [showArtifactsForm, setShowArtifactsForm] = useState(false);
+  const [draftArtifactIds, setDraftArtifactIds] = useState<string[]>([]);
+  const [materialCandidates, setMaterialCandidates] = useState<string[]>([]);
+  const [adoptedMaterialCandidates, setAdoptedMaterialCandidates] = useState<string[]>([]);
   const [uploadingArtifact, setUploadingArtifact] = useState(false);
   const artifactInputRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +121,61 @@ export default function OptimizePage() {
     setLoading(false);
   }, []);
 
+  const updateNewInternship = (updates: Partial<Internship>) => {
+    setNewInternship({ ...newInternship, ...updates });
+    setInternshipPolished(false);
+    setMaterialCandidates([]);
+    setAdoptedMaterialCandidates([]);
+  };
+
+  const handleAdoptMaterialCandidate = (candidate: string) => {
+    const currentDescription = newInternship.description?.trim() || "";
+    setNewInternship({
+      ...newInternship,
+      description: currentDescription ? `${currentDescription}\n- ${candidate}` : `- ${candidate}`,
+    });
+    setAdoptedMaterialCandidates([...adoptedMaterialCandidates, candidate]);
+  };
+
+  const handlePolishInternship = async () => {
+    if (!newInternship.company || !newInternship.description) {
+      alert("请先填写实习公司和工作内容");
+      return;
+    }
+
+    setPolishingInternship(true);
+
+    try {
+      const selectedResume = resumes.find(r => r.id === selectedResumeId);
+      const response = await fetch("/api/optimize/internship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newInternship,
+          resumeContent: selectedResume?.fileData || "",
+          artifacts: artifacts.filter(artifact => draftArtifactIds.includes(artifact.id)),
+        }),
+      });
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "AI 润色失败");
+      }
+
+      setNewInternship({
+        ...newInternship,
+        description: data.data.optimizedDescription,
+      });
+      setMaterialCandidates(data.data.materialCandidates || []);
+      setAdoptedMaterialCandidates([]);
+      setInternshipPolished(true);
+    } catch (error: any) {
+      alert(error.message || "AI 润色失败，请稍后重试");
+    } finally {
+      setPolishingInternship(false);
+    }
+  };
+
   // 添加实习经历
   const handleAddInternship = () => {
     if (!newInternship.company || !newInternship.description) {
@@ -128,7 +189,8 @@ export default function OptimizePage() {
       position: newInternship.position || "",
       startDate: newInternship.startDate || "",
       endDate: newInternship.endDate || "",
-      description: newInternship.description || ""
+      description: newInternship.description || "",
+      artifactIds: draftArtifactIds,
     };
 
     const updated = [internship, ...internships];
@@ -142,6 +204,10 @@ export default function OptimizePage() {
       endDate: "",
       description: ""
     });
+    setDraftArtifactIds([]);
+    setMaterialCandidates([]);
+    setAdoptedMaterialCandidates([]);
+    setInternshipPolished(false);
 
     alert("实习经历已添加！");
   };
@@ -149,9 +215,13 @@ export default function OptimizePage() {
   const handleDeleteInternship = (id: string) => {
     if (!confirm("确定要删除这条实习经历吗？")) return;
     
+    const internship = internships.find(i => i.id === id);
     const updated = internships.filter(i => i.id !== id);
+    const updatedArtifacts = artifacts.filter(a => !internship?.artifactIds?.includes(a.id));
     setInternships(updated);
+    setArtifacts(updatedArtifacts);
     localStorage.setItem(INTERNSHIPS_KEY, JSON.stringify(updated));
+    localStorage.setItem(ARTIFACTS_KEY, JSON.stringify(updatedArtifacts));
   };
 
   // 提取PDF文本
@@ -251,9 +321,12 @@ export default function OptimizePage() {
 
       const updated = [artifact, ...artifacts];
       setArtifacts(updated);
+      setDraftArtifactIds([...draftArtifactIds, artifact.id]);
+      setMaterialCandidates([]);
+      setAdoptedMaterialCandidates([]);
       localStorage.setItem(ARTIFACTS_KEY, JSON.stringify(updated));
 
-      alert(`工作成果 "${file.name}" 上传成功！\n内容长度：${fileContent.length} 字符`);
+      alert(`辅助工作材料 "${file.name}" 上传成功！\n内容长度：${fileContent.length} 字符`);
       
       if (artifactInputRef.current) {
         artifactInputRef.current.value = "";
@@ -271,13 +344,16 @@ export default function OptimizePage() {
     
     const updated = artifacts.filter(a => a.id !== id);
     setArtifacts(updated);
+    setDraftArtifactIds(draftArtifactIds.filter(artifactId => artifactId !== id));
+    setMaterialCandidates([]);
+    setAdoptedMaterialCandidates([]);
     localStorage.setItem(ARTIFACTS_KEY, JSON.stringify(updated));
   };
 
   const handleOptimize = async () => {
     const selectedResume = resumes.find(r => r.id === selectedResumeId);
     const selectedJd = jdHistory.find(j => j.id === selectedJdId);
-    const jdText = selectedJd?.content || newJdContent;
+    const jdText = selectedJd?.content || (newJdConfirmed ? newJdContent : "");
 
     if (!selectedResume) {
       setError("请先选择简历");
@@ -305,7 +381,6 @@ export default function OptimizePage() {
           jdTitle: selectedJd?.title || "新岗位",
           company: selectedJd?.company || "",
           internships: internships,
-          artifacts: artifacts,
         }),
       });
 
@@ -403,7 +478,7 @@ export default function OptimizePage() {
             <p className="text-gray-600">选择简历和JD，AI使用STAR法则优化表达，提升简历通过率</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Left Column - Selection */}
             <div className="space-y-6">
               {/* Resume Selection */}
@@ -468,6 +543,7 @@ export default function OptimizePage() {
                         key={j.id}
                         onClick={() => {
                           setSelectedJdId(j.id);
+                          setNewJdConfirmed(false);
                           setShowNewJdInput(false);
                         }}
                         className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
@@ -497,11 +573,19 @@ export default function OptimizePage() {
                         setSelectedJdId(null);
                         setShowNewJdInput(true);
                       }}
-                      className="w-full text-left p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 text-blue-600 transition-all"
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        newJdConfirmed
+                          ? "border-blue-500 bg-blue-50 text-blue-600"
+                          : "border-dashed border-gray-300 hover:border-blue-400 text-blue-600"
+                      }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Plus className="h-5 w-5" />
-                        <span>粘贴新JD</span>
+                        {newJdConfirmed ? (
+                          <CheckCircle className="h-5 w-5" />
+                        ) : (
+                          <Plus className="h-5 w-5" />
+                        )}
+                        <span>{newJdConfirmed ? "已使用粘贴的新JD（点击修改）" : "粘贴新JD"}</span>
                       </div>
                     </button>
                   </div>
@@ -515,10 +599,26 @@ export default function OptimizePage() {
                     <h3 className="font-semibold mb-4">粘贴JD内容</h3>
                     <textarea
                       value={newJdContent}
-                      onChange={e => setNewJdContent(e.target.value)}
+                      onChange={e => {
+                        setNewJdContent(e.target.value);
+                        setNewJdConfirmed(false);
+                      }}
                       placeholder="粘贴岗位描述..."
                       className="w-full h-32 p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        onClick={() => {
+                          setNewJdContent(newJdContent.trim());
+                          setNewJdConfirmed(true);
+                          setShowNewJdInput(false);
+                        }}
+                        disabled={!newJdContent.trim()}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        确认使用此JD
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -546,7 +646,7 @@ export default function OptimizePage() {
                   </div>
                   
                   <p className="text-sm text-gray-500 mb-4">
-                    如果你的简历缺少实习经历，可以在这里补充，AI会结合补充内容进行优化
+                    简历还没更新？先写下最近一段实习的工作内容和成果，AI 会整理成可直接放入简历的表达。
                   </p>
 
                   {internships.length > 0 && (
@@ -564,6 +664,12 @@ export default function OptimizePage() {
                               <div className="text-sm text-gray-700 mt-2">
                                 {intern.description}
                               </div>
+                              {intern.artifactIds && intern.artifactIds.length > 0 && (
+                                <div className="text-xs text-purple-700 mt-3 flex items-center gap-1">
+                                  <File className="h-3.5 w-3.5" />
+                                  已附加 {intern.artifactIds.length} 份辅助工作材料
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => handleDeleteInternship(intern.id)}
@@ -579,139 +685,160 @@ export default function OptimizePage() {
 
                   {showInternshipForm && (
                     <div className="space-y-3 pt-4 border-t">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                         <input
                           type="text"
                           placeholder="实习公司"
                           value={newInternship.company}
-                          onChange={e => setNewInternship({...newInternship, company: e.target.value})}
+                          onChange={e => updateNewInternship({company: e.target.value})}
                           className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="text"
                           placeholder="岗位（如：产品经理实习生）"
                           value={newInternship.position}
-                          onChange={e => setNewInternship({...newInternship, position: e.target.value})}
+                          onChange={e => updateNewInternship({position: e.target.value})}
                           className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                         <input
                           type="text"
                           placeholder="开始时间（如：2024.06）"
                           value={newInternship.startDate}
-                          onChange={e => setNewInternship({...newInternship, startDate: e.target.value})}
+                          onChange={e => updateNewInternship({startDate: e.target.value})}
                           className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="text"
                           placeholder="结束时间（如：2024.09）"
                           value={newInternship.endDate}
-                          onChange={e => setNewInternship({...newInternship, endDate: e.target.value})}
+                          onChange={e => updateNewInternship({endDate: e.target.value})}
                           className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <textarea
-                        placeholder="具体工作内容和成就（请详细描述，这样AI能更好地帮你优化）..."
+                        placeholder="简单写下工作碎片即可，例如：KOC/KOL 达人筛选、建联、Brief 审核、视频审核、投放支持。AI 会整理成专业话术，并用 XX 留出量化位置..."
                         value={newInternship.description}
-                        onChange={e => setNewInternship({...newInternship, description: e.target.value})}
+                        onChange={e => updateNewInternship({description: e.target.value})}
                         className="w-full h-24 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      <Button onClick={handleAddInternship} className="w-full" variant="outline">
-                        <Plus className="h-4 w-4 mr-2" />
-                        添加实习经历
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* 工作成果库 */}
-              <Card>
-                <CardContent className="p-6">
-                  <div 
-                    className="flex items-center justify-between mb-4 cursor-pointer"
-                    onClick={() => setShowArtifactsForm(!showArtifactsForm)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">4. 实习成果库（可选）</h3>
-                      {artifacts.length > 0 && (
-                        <span className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded">
-                          已上传 {artifacts.length} 个文件
-                        </span>
-                      )}
-                    </div>
-                    {showArtifactsForm ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-gray-500 mb-4">
-                    上传实习期间的工作成果文件（策划案、数据报告、方案文档等），AI会自动提取内容来丰富你的简历
-                  </p>
-
-                  {artifacts.length > 0 && (
-                    <div className="space-y-2 mb-4">
-                      {artifacts.map(artifact => (
-                        <div key={artifact.id} className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-2 flex-1">
-                              <File className="h-4 w-4 text-purple-600 mt-1 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-purple-800 text-sm">
-                                  {artifact.fileName}
+                      <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                        <div className="mb-3">
+                          <h4 className="text-sm font-medium text-purple-900">辅助工作材料（可选）</h4>
+                          <p className="text-xs text-purple-700 mt-1">
+                            上传表格、Word、策划案、brief 或复盘材料。AI 会帮你发现可能遗漏的工作模块，生成可选候选要点。
+                          </p>
+                        </div>
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                          提示：材料内容会发送给 MiniMax。请先删除客户隐私、商业机密等敏感信息。
+                        </p>
+                        {draftArtifactIds.length > 0 && (
+                          <div className="space-y-2 mb-3">
+                            {artifacts
+                              .filter(artifact => draftArtifactIds.includes(artifact.id))
+                              .map(artifact => (
+                                <div key={artifact.id} className="bg-white p-3 rounded-lg border border-purple-200">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2 min-w-0">
+                                      <File className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                                      <div className="min-w-0">
+                                        <div className="font-medium text-purple-800 text-sm truncate">
+                                          {artifact.fileName}
+                                        </div>
+                                        <div className="text-xs text-purple-600 mt-1">
+                                          {artifact.size} · 已提取 {artifact.content.length} 字符
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteArtifact(artifact.id)}
+                                      className="text-red-500 hover:text-red-700"
+                                      aria-label={`删除 ${artifact.fileName}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="text-xs text-purple-600 mt-1">
-                                  {artifact.size} · {artifact.uploadTime}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  内容长度：{artifact.content.length} 字符
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteArtifact(artifact.id)}
-                              className="text-red-500 hover:text-red-700 ml-2"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                              ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {showArtifactsForm && (
-                    <div className="pt-4 border-t">
-                      <input
-                        ref={artifactInputRef}
-                        type="file"
-                        accept=".pdf,.docx,.xlsx,.xls,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,text/plain"
-                        onChange={(e) => handleArtifactUpload(e.target.files)}
-                        className="hidden"
-                      />
-                      
-                      {uploadingArtifact ? (
-                        <div className="flex flex-col items-center py-8">
-                          <Loader2 className="h-8 w-8 text-purple-600 animate-spin mb-3" />
-                          <p className="text-sm text-gray-600">正在提取文件内容...</p>
-                        </div>
-                      ) : (
-                        <div 
-                          className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all"
+                        )}
+                        <input
+                          ref={artifactInputRef}
+                          type="file"
+                          accept=".pdf,.docx,.xlsx,.xls,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,text/plain"
+                          onChange={(e) => handleArtifactUpload(e.target.files)}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
                           onClick={() => artifactInputRef.current?.click()}
+                          disabled={uploadingArtifact}
+                          className="w-full border-2 border-dashed border-purple-300 rounded-lg p-4 text-center hover:border-purple-400 hover:bg-purple-100 transition-all disabled:opacity-60"
                         >
-                          <Upload className="h-8 w-8 text-purple-400 mx-auto mb-3" />
-                          <p className="text-sm text-purple-600 font-medium">
-                            点击上传工作成果文件
+                          {uploadingArtifact ? (
+                            <span className="flex items-center justify-center text-sm text-purple-700">
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              正在提取材料内容...
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center text-sm text-purple-700">
+                              <Upload className="h-4 w-4 mr-2" />
+                              添加辅助工作材料
+                            </span>
+                          )}
+                        </button>
+                        <p className="text-xs text-purple-600 mt-2 text-center">
+                          支持 PDF、DOCX、XLSX、TXT
+                        </p>
+                      </div>
+                      {internshipPolished && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                            AI 已根据你填写的文字整理完成。你可以继续修改，确认无误后添加到本次优化材料。
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            支持 PDF、DOCX、XLSX、TXT 格式（营销策划、数据报告等）
-                          </p>
+                          {materialCandidates.length > 0 && (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                              <h4 className="text-sm font-medium text-amber-900">从材料中提炼的候选要点</h4>
+                              <p className="text-xs text-amber-700 mt-1 mb-3">
+                                这些内容不会自动进入简历。请确认确实属于你的工作，再逐条采纳并修改。
+                              </p>
+                              <ul className="space-y-2">
+                                {materialCandidates.map((candidate, index) => (
+                                  <li key={`${candidate}-${index}`} className="text-xs text-amber-900 bg-white rounded border border-amber-200 p-3">
+                                    <p>{candidate}</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAdoptMaterialCandidate(candidate)}
+                                      disabled={adoptedMaterialCandidates.includes(candidate)}
+                                      className="mt-2 text-amber-800 font-medium hover:text-amber-950 disabled:text-green-700 disabled:cursor-default"
+                                    >
+                                      {adoptedMaterialCandidates.includes(candidate) ? "✓ 已采纳" : "+ 采纳到编辑框"}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       )}
+                      <Button
+                        onClick={handlePolishInternship}
+                        className="w-full"
+                        variant="outline"
+                        disabled={polishingInternship}
+                      >
+                        {polishingInternship ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        {polishingInternship ? "AI 正在整理..." : "AI 润色为简历表达"}
+                      </Button>
+                      <Button onClick={handleAddInternship} className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        确认添加到优化材料
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -723,7 +850,7 @@ export default function OptimizePage() {
 
               <Button
                 onClick={handleOptimize}
-                disabled={!selectedResumeId || (!selectedJdId && !newJdContent) || optimizing}
+                disabled={!selectedResumeId || (!selectedJdId && !newJdConfirmed) || optimizing}
                 className="w-full"
                 size="lg"
               >
@@ -781,8 +908,8 @@ export default function OptimizePage() {
               <ul className="space-y-1 text-sm text-blue-700">
                 <li>• 基于简历内容和JD进行STAR法则优化</li>
                 <li>• 嵌入关键词，提升ATS通过率</li>
-                <li>• 量化成果，突出数据和价值</li>
-                <li>• 如果简历缺少经历，可以补充实习信息和上传工作成果</li>
+                <li>• 保留真实数据，突出成果和价值</li>
+                <li>• 如果简历缺少经历，可以补充实习信息并附加工作材料</li>
                 <li>• 不编造虚假内容，只优化表达方式</li>
               </ul>
             </CardContent>
