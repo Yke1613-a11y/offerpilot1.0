@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Key, ArrowRight, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { verifyInviteCode, isVerified, markVerified } from "@/lib/invite";
+import { verifyInviteCode, isVerified } from "@/lib/invite";
 
 // 禁用预渲染
 export const dynamic = 'force-dynamic';
@@ -18,13 +18,14 @@ export default function InvitePage() {
   useEffect(() => {
     // 检查是否已验证
     if (isVerified()) {
+      // 跳转回原页面
       router.push("/dashboard/jd");
     } else {
       setChecking(false);
     }
   }, [router]);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     setError("");
 
     if (!inviteCode.trim()) {
@@ -34,7 +35,9 @@ export default function InvitePage() {
 
     const code = inviteCode.trim().toUpperCase();
     if (verifyInviteCode(code)) {
-      markVerified(code);
+      // 设置 Cookie 并跳转
+      document.cookie = `offerpilot_verified=true; path=/; max-age=${60 * 60 * 24 * 30}`; // 30天有效期
+      document.cookie = `offerpilot_invite_code=${code}; path=/; max-age=${60 * 60 * 24 * 30}`;
       router.push("/dashboard/jd");
     } else {
       setError("邀请码无效，请联系管理员获取正确的邀请码");

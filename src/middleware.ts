@@ -1,14 +1,36 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  // 临时禁用认证检查，允许所有用户访问所有页面
-  // TODO: 在配置好Supabase后，重新启用认证
-  return NextResponse.next()
+// 公开路径 - 不需要验证
+const publicPaths = [
+  '/invite',
+  '/api/jd/analyze',  // 分析接口需要邀请码，但因为要调用AI，这里暂时放行
+];
+
+// 需要验证的路径
+const protectedPaths = ['/dashboard', '/'];
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // 检查是否有邀请码 Cookie
+  const inviteVerified = request.cookies.get('offerpilot_verified');
+  
+  // 如果访问受保护的路径且没有验证 Cookie，重定向到邀请码页面
+  const isProtected = protectedPaths.some(path => pathname.startsWith(path));
+  const isPublic = publicPaths.some(path => pathname.startsWith(path));
+  
+  if (isProtected && !inviteVerified) {
+    const inviteUrl = new URL('/invite', request.url);
+    inviteUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(inviteUrl);
+  }
+  
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
-}
+};

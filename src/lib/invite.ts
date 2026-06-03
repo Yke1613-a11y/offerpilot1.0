@@ -15,8 +15,20 @@ export function verifyInviteCode(code: string): boolean {
   return INVITE_CODES.includes(code.toUpperCase().trim());
 }
 
+// 检查是否已验证（同时检查 localStorage 和 Cookie）
 export function isVerified(): boolean {
   if (typeof window === 'undefined') return false;
+  
+  // 检查 Cookie
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'offerpilot_verified' && value === 'true') {
+      return true;
+    }
+  }
+  
+  // 检查 localStorage（向后兼容）
   return localStorage.getItem('offerpilot_verified') === 'true';
 }
 

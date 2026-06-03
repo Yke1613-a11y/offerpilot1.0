@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { isVerified } from "@/lib/invite";
 import {
   FileText,
   Target,
@@ -21,18 +18,6 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // 检查是否已验证，未验证则跳转到邀请码页面
-    if (!isVerified()) {
-      router.push("/invite");
-    }
-  }, [router]);
-
-  if (!isVerified()) {
-    return null; // 或显示加载状态
-  }
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -59,7 +44,7 @@ export default function HomePage() {
             </nav>
 
             <div className="flex items-center gap-4">
-              <Link href="/dashboard/jd">
+              <Link href="/invite">
                 <Button>立即体验</Button>
               </Link>
             </div>
@@ -79,7 +64,7 @@ export default function HomePage() {
             专为大学生、应届生、实习生打造
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/dashboard/jd">
+            <Link href="/invite">
               <Button size="lg" className="w-full sm:w-auto">
                 立即体验 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -169,10 +154,10 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-blue-200 bg-blue-50">
+                <div className="bg-white p-6 rounded-xl border border-green-200 bg-green-50">
                   <div className="flex items-start gap-4">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <Wand2 className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">ATS友好简历优化</h3>
@@ -182,10 +167,10 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-blue-200 bg-blue-50">
+                <div className="bg-white p-6 rounded-xl border border-purple-200 bg-purple-50">
                   <div className="flex items-start gap-4">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="h-5 w-5 text-blue-600" />
+                    <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <ClipboardList className="h-5 w-5 text-purple-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">面试问题提前准备</h3>
@@ -202,62 +187,53 @@ export default function HomePage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20" id="demo">
+      <section className="py-20" id="features">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">三步获得精准简历</h2>
-            <p className="text-gray-600">简单易懂的流程，让求职更高效</p>
-          </div>
-
+          <h2 className="text-3xl font-bold mb-12 text-center">三步获得精准简历</h2>
+          <p className="text-center text-gray-600 mb-12">简单易懂的流程，让求职更高效</p>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
                 <Upload className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="font-semibold mb-2">上传简历</h3>
-              <p className="text-sm text-gray-600">支持PDF和Word格式</p>
+              <h3 className="text-xl font-semibold mb-2">上传简历</h3>
+              <p className="text-gray-600">支持PDF和Word格式</p>
             </div>
-
             <div className="text-center">
-              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                <ClipboardList className="h-8 w-8 text-blue-600" />
+              <div className="h-16 w-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-8 w-8 text-purple-600" />
               </div>
-              <h3 className="font-semibold mb-2">粘贴JD</h3>
-              <p className="text-sm text-gray-600">输入目标岗位描述</p>
+              <h3 className="text-xl font-semibold mb-2">粘贴JD</h3>
+              <p className="text-gray-600">输入目标岗位描述</p>
             </div>
-
             <div className="text-center">
-              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                <Wand2 className="h-8 w-8 text-blue-600" />
+              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="h-8 w-8 text-green-600" />
               </div>
-              <h3 className="font-semibold mb-2">AI优化</h3>
-              <p className="text-sm text-gray-600">一键生成优化简历</p>
+              <h3 className="text-xl font-semibold mb-2">AI优化</h3>
+              <p className="text-gray-600">一键生成优化简历</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20">
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600" id="pricing">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            准备好获得你的 Dream Offer 了吗？
-          </h2>
-          <p className="text-gray-600 mb-8">
-            立即开始，让AI成为你求职路上的得力助手
-          </p>
-          <Link href="/dashboard/jd">
-            <Button size="lg">
-              立即开始体验 <ArrowRight className="ml-2 h-5 w-5" />
+          <h2 className="text-3xl font-bold mb-4 text-white">准备好获得你的 Dream Offer 了吗？</h2>
+          <p className="text-white/80 mb-8">立即开始，让AI成为你求职路上的得力助手</p>
+          <Link href="/invite">
+            <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
+              立即体验 <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12">
-        <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          © 2024 OfferPilot. 保留所有权利。
+      <footer className="py-8 border-t">
+        <div className="container mx-auto px-4 text-center text-gray-500">
+          <p>© 2024 OfferPilot. All rights reserved.</p>
         </div>
       </footer>
     </div>
