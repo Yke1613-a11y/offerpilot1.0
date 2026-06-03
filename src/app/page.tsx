@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { isVerified } from "@/lib/invite";
 import {
   FileText,
   Target,
@@ -18,6 +21,18 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // 检查是否已验证，未验证则跳转到邀请码页面
+    if (!isVerified()) {
+      router.push("/invite");
+    }
+  }, [router]);
+
+  if (!isVerified()) {
+    return null; // 或显示加载状态
+  }
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
