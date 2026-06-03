@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Sparkles, Key, ArrowRight, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { verifyInviteCode, isVerified, markVerified } from "@/lib/invite";
@@ -11,25 +11,18 @@ export const dynamic = 'force-dynamic';
 
 export default function InvitePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // 检查URL中是否有邀请码
-    const codeFromUrl = searchParams.get("code");
-    if (codeFromUrl) {
-      setInviteCode(codeFromUrl);
-    }
-
     // 检查是否已验证
     if (isVerified()) {
       router.push("/dashboard/jd");
     } else {
       setChecking(false);
     }
-  }, [router, searchParams]);
+  }, [router]);
 
   const handleVerify = () => {
     setError("");
