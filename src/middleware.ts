@@ -1,28 +1,37 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// 公开路径 - 不需要验证
-const publicPaths = [
-  '/invite',
-  '/api/jd/analyze',  // 分析接口需要邀请码，但因为要调用AI，这里暂时放行
-];
-
-// 需要验证的路径
-const protectedPaths = ['/dashboard', '/'];
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // 公开路径 - 不需要验证
+  if (pathname === '/invite' || pathname.startsWith('/invite')) {
+    return NextResponse.next();
+  }
+  
+  // 静态资源和 API 不需要验证
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/') ||
+    pathname.includes('.') // 静态文件
+  ) {
+    return NextResponse.next();
+  }
+  
   // 检查是否有邀请码 Cookie
-  const inviteVerified = request.cookies.get('offerpilot_verified');
+  const cookies = request.cookies.getAll();
+  let isVerified = false;
+  
+  for (const cookie of cookies) {
+    if (cookie.name === 'offerpilot_verified' && cookie.value === 'true') {
+      isVerified = true;
+      break;
+    }
+  }
   
   // 如果访问受保护的路径且没有验证 Cookie，重定向到邀请码页面
-  const isProtected = protectedPaths.some(path => pathname.startsWith(path));
-  const isPublic = publicPaths.some(path => pathname.startsWith(path));
-  
-  if (isProtected && !inviteVerified) {
+  if (!isVerified) {
     const inviteUrl = new URL('/invite', request.url);
-    inviteUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(inviteUrl);
   }
   
@@ -31,6 +40,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
