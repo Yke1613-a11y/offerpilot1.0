@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 
+// 禁用预渲染，避免构建时缺少 Supabase 环境变量
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
