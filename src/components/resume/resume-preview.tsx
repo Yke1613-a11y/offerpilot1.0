@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Loader2, FileText } from "lucide-react";
 import Link from "next/link";
-import { Card, CardContent } from "./ui/card";
-import { Button } from "./ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Resume {
   id: string;
