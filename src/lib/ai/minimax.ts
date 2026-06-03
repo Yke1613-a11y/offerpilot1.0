@@ -143,7 +143,7 @@ export function analyzeJDLocal(content: string): JDAnalysisResult {
     skill_score: Math.floor(matchScore * 0.9 + Math.random() * 10),
     experience_score: Math.floor(matchScore * 1.1 + Math.random() * 5),
     keyword_score: Math.floor(matchScore * 0.95 + Math.random() * 8),
-    keywords: keywords.slice(0, 15),
+    keywords: keywords.slice(0, 15) as { word: string; frequency: number; importance: "high" | "medium" | "low" }[],
     skills: skills,
     requirements: requirements,
     ats_keywords: atsKeywords,
