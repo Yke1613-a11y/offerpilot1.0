@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FileText, Loader2, Upload, Trash2, Eye, AlertCircle, CheckCircle, Target, Wand2, ClipboardList, Settings } from "lucide-react";
+import { FileText, Loader2, Upload, Trash2, Eye, AlertCircle, CheckCircle, Target, Wand2, ClipboardList, Settings, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -247,6 +247,9 @@ export default function ResumesPage() {
             </Link>
             <Link href="/dashboard/resumes" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-600">
               <FileText className="h-5 w-5" /><span>简历管理</span>
+            </Link>
+            <Link href="/dashboard/work" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50">
+              <Sparkles className="h-5 w-5" /><span>Work翻译器</span>
             </Link>
             <Link href="/dashboard/jd" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50">
               <Target className="h-5 w-5" /><span>JD分析</span>

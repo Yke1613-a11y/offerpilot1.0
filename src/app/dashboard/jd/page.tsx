@@ -14,6 +14,7 @@ import {
   Loader2,
   Plus,
   Sparkles,
+  Languages,
 } from "lucide-react";
 import { JDAnalysisPanel } from "@/components/jd/jd-analysis-panel";
 import { JD_STORAGE_KEY } from "@/lib/storage-keys";
@@ -121,6 +122,9 @@ export default function JDAnalysisPage() {
             </Link>
             <Link href="/dashboard/resumes" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50">
               <FileText className="h-5 w-5" /><span>简历管理</span>
+            </Link>
+            <Link href="/dashboard/work" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50">
+              <Sparkles className="h-5 w-5" /><span>Work翻译器</span>
             </Link>
             <Link href="/dashboard/jd" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-600">
               <Target className="h-5 w-5" /><span>JD分析</span>
